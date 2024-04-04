@@ -9,18 +9,27 @@ pub fn main() !void {
     // stdout, not any debugging messages.
     const stdout_file = std.io.getStdOut().writer();
     var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    const writer = bw.writer();
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    try writer.print("Run `zig build test` to run the tests.\n", .{});
 
     try bw.flush(); // don't forget to flush!
 
     const stdin = std.io.getStdIn();
-    _ = stdin;
-
+    var br = std.io.bufferedReader(stdin.reader());
+    var reader = br.reader();
     var running = true;
     while (running) {
+        //Init reader stuff
+        try writer.print("lizpat> ", .{});
+        try bw.flush();
+        var msg_buf: [128]u8 = undefined;
+        var input = try reader.readUntilDelimiterOrEof(&msg_buf, '\n');
+        if (input) |in| {
+            try writer.print("Hello, {s}\n", .{in});
+        }
 
+        try bw.flush();
     }
 }
 
