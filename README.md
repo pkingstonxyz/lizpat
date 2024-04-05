@@ -4,6 +4,9 @@ A lisp written in zig
 
 ## Todo list
 
+ - [x] Implement scan for parens
+ - [x] Implement scan for comments
+ - [ ] Implement scan for identifiers
  - [ ] Implement read for identifiers
  - [ ] Implement print for identifiers
  - [ ] Implement read for parens/cells
@@ -16,28 +19,6 @@ A lisp written in zig
  - [ ] Implement tests for reading floats
  - [ ] Implement tests for reading strings
  - [ ] Implement tests for reading parens/cells
-
-## Decisions/Thoughts
-
-Identifiers are not stored in a given Sexp cell, instead they are stored as
-an array index which points to the identifier. (I don't know if this is a bad
-idea or not. I think java does something similar? Idk I don't have internet lmao)
-
-## Pseudocode
-
-\* means it is a stretch goal/deferred/not an immediate goal
-
-read(str) -> s-expr
- - Reads in a string to s-expressions
-
-eval(s-expr) -> s-expr
- - Evaluates an s-expression
-
-print(s-expr) -> void 
- - prints in human readable format
-
-prn(s-expr)* -> void 
- - imperatively prints in *read* readable format
 
 
 ```
