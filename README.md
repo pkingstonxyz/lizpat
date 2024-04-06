@@ -7,7 +7,7 @@ A lisp written in zig
  - [x] Implement scan for parens
  - [x] Implement scan for comments
  - [x] Implement scan for strings
- - [ ] Implement scan for numbers
+ - [x] Implement scan for numbers
  - [ ] Implement scan for identifiers
  - [ ] Implement read for identifiers
  - [ ] Implement print for identifiers
