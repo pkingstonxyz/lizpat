@@ -14,10 +14,22 @@ const Sexp = union(SType) {
 };
 
 const TType = enum {
+    //The allmighty parens
     leftParen,
     rightParen,
+    //literals
+    string,
+    binary, //treated as integer literals
+    hex,
+    number, //treated as a double (for now)
+    //File stuff
     eof,
-    unexpectedChar,
+    //errors
+    EunexpectedChar,
+    EunterminatedString,
+    Einvalidbinary,
+    Einvalidhex,
+    Einvalidnumber,
 };
 
 const Token = struct {
@@ -54,6 +66,10 @@ const Scanner = struct {
     pub fn peek(scanner: *Scanner) u8 {
         return scanner.*.source[scanner.*.current];
     }
+    pub fn peek_next(scanner: *Scanner) u8 {
+        if (Scanner.is_at_end(scanner)) return 0;
+        return scanner.*.source[scanner.*.current + 1];
+    }
     pub fn get_payload(scanner: *Scanner) []u8 { //Grabs a chunk
         return scanner.*.source[scanner.*.start..scanner.*.current];
     }
@@ -77,6 +93,30 @@ const Scanner = struct {
             }
         }
     }
+    pub fn grab_number(scanner: *Scanner) Token {
+        if (Scanner.is_at_end(scanner)) {
+            return Token{
+                .type = TType.number,
+                .payload = Scanner.get_payload(scanner),
+            };
+        }
+        while (!Scanner.is_at_end(scanner) and Scanner.peek(scanner) >= '0' and Scanner.peek(scanner) <= '9') {
+            _ = Scanner.advance(scanner);
+        }
+        if (!Scanner.is_at_end(scanner) and Scanner.peek(scanner) == '.' and
+            Scanner.peek_next(scanner) >= '0' and Scanner.peek_next(scanner) <= '9')
+        {
+            //Grab the .
+            _ = Scanner.advance(scanner);
+            while (!Scanner.is_at_end(scanner) and Scanner.peek(scanner) >= '0' and Scanner.peek(scanner) <= '9') {
+                _ = Scanner.advance(scanner);
+            }
+        }
+        return Token{
+            .type = TType.number,
+            .payload = Scanner.get_payload(scanner),
+        };
+    }
     pub fn next(scanner: *Scanner) Token {
         Scanner.handle_whitespace_and_comments(scanner);
         scanner.*.start = scanner.*.current; //Move to the next chunk
@@ -89,6 +129,7 @@ const Scanner = struct {
         const c: u8 = Scanner.advance(scanner);
 
         switch (c) {
+            //Parentheses
             '(' => return Token{
                 .type = TType.leftParen,
                 .payload = Scanner.get_payload(scanner),
@@ -97,8 +138,94 @@ const Scanner = struct {
                 .type = TType.rightParen,
                 .payload = Scanner.get_payload(scanner),
             },
+            //Strings
+            '"' => {
+                while (!Scanner.is_at_end(scanner) and Scanner.peek(scanner) != '"') {
+                    if (Scanner.peek(scanner) == '\n') scanner.*.line += 1;
+                    _ = Scanner.advance(scanner);
+                }
+                if (Scanner.is_at_end(scanner)) return Token{ .type = TType.EunterminatedString, .payload = undefined };
+                _ = Scanner.advance(scanner); //Closing quote
+                return Token{
+                    .type = TType.string,
+                    .payload = Scanner.get_payload(scanner),
+                };
+            },
+            //Numbers
+            '0' => {
+                if (Scanner.is_at_end(scanner)) { //Just a zero
+                    return Token{
+                        .type = TType.number,
+                        .payload = Scanner.get_payload(scanner),
+                    };
+                }
+                const following = Scanner.peek(scanner);
+                switch (following) {
+                    //Binary
+                    'b' => {
+                        //Grab the b
+                        _ = Scanner.advance(scanner);
+                        while (!Scanner.is_at_end(scanner)) {
+                            const num = Scanner.peek(scanner);
+                            if (num == '0' or num == '1') {
+                                _ = Scanner.advance(scanner);
+                            } else if (num > '1' and num <= '9') {
+                                //Encountering a bad number
+                                return Token{
+                                    .type = TType.Einvalidbinary,
+                                    .payload = undefined,
+                                };
+                            } else {
+                                //We move on (i.e. 0b0hello is tokenized as 0b0 and hello)
+                                return Token{
+                                    .type = TType.binary,
+                                    .payload = Scanner.get_payload(scanner),
+                                };
+                            }
+                        }
+                        return Token{
+                            .type = TType.binary,
+                            .payload = Scanner.get_payload(scanner),
+                        };
+                    },
+                    //Hexadecimal
+                    'x' => {
+                        //Grab the x
+                        _ = Scanner.advance(scanner);
+                        while (!Scanner.is_at_end(scanner)) {
+                            const num = Scanner.peek(scanner);
+                            if ((num >= '0' and num <= '9') or
+                                (num >= 'a' and num <= 'f') or
+                                (num >= 'A' and num <= 'F'))
+                            {
+                                _ = Scanner.advance(scanner);
+                            } else {
+                                //We move on (i.e. 0x0hello is tokenized as 0x0 and hello)
+                                return Token{
+                                    .type = TType.hex,
+                                    .payload = Scanner.get_payload(scanner),
+                                };
+                            }
+                        }
+                        return Token{
+                            .type = TType.hex,
+                            .payload = Scanner.get_payload(scanner),
+                        };
+                    },
+                    //A standard number (numbers can be prefixed by as many 0s as you want)
+                    '0'...'9', '.' => {
+                        return Scanner.grab_number(scanner);
+                    },
+                    else => {
+                        return Token{ .type = TType.number, .payload = Scanner.get_payload(scanner) };
+                    },
+                }
+            },
+            '1'...'9' => {
+                return Scanner.grab_number(scanner);
+            },
             else => return Token{
-                .type = TType.unexpectedChar,
+                .type = TType.EunexpectedChar,
                 .payload = undefined,
             },
         }
@@ -107,38 +234,20 @@ const Scanner = struct {
 
 pub fn read(allocator: Allocator, scanner: *Scanner) !void {
     _ = allocator;
-    //_ = allocator;
-    //_ = string;
-    //const word = "hello";
-    //const a = Sexp{ .atom = &word };
-    //const d = Sexp{ .atom = &word };
-    //const cell = Sexp{ .cell = .{
-    //    .car = &a,
-    //    .cdr = &d,
-    //} };
-    //_ = cell;
-    //_ = sexp;
-
-    //
-    //A dummy read function that tests if I understand how zig arrays/slices work
-    //
-    //const sexp = try allocator.alloc(Sexp, @sizeOf(Sexp));
-    //const sexp = try allocator.create(Sexp);
-    //if (string.len == 0) { //Base case (end of string)
-    //    return sexp;
-    //} else {
-    //    const char = string[0];
-    //    std.debug.print("{c}\n", .{char});
-    //    const next = try read(allocator, string[1..]);
-    //    return next;
-    //}
-    //const typeo = @typeName(@TypeOf(sexp));
-    //std.debug.print("{s}\n", .{typeo});
-    //std.debug.print("Why did we reach here? String is: {s}\n", .{string});
-    //return sexp;
-    while (!Scanner.is_at_end(scanner)) {
-        const nextTok = Scanner.next(scanner);
-        std.debug.print("Type: {s} | Payload: {s}\n", .{ @tagName(nextTok.type), nextTok.payload });
+    while (true) {
+        const tok = Scanner.next(scanner);
+        std.debug.print("Type: {s} | Payload: {s}\n", .{ @tagName(tok.type), tok.payload });
+        switch (tok.type) {
+            //File ended quit reading
+            TType.eof => return,
+            //Errors quit reading (this needs to be fleshed out lmao)
+            TType.EunexpectedChar,
+            TType.EunterminatedString,
+            TType.Einvalidbinary,
+            => return,
+            //Keep on trucking
+            else => continue,
+        }
     }
 }
 

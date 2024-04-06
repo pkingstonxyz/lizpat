@@ -6,6 +6,8 @@ A lisp written in zig
 
  - [x] Implement scan for parens
  - [x] Implement scan for comments
+ - [x] Implement scan for strings
+ - [ ] Implement scan for numbers
  - [ ] Implement scan for identifiers
  - [ ] Implement read for identifiers
  - [ ] Implement print for identifiers
@@ -19,13 +21,3 @@ A lisp written in zig
  - [ ] Implement tests for reading floats
  - [ ] Implement tests for reading strings
  - [ ] Implement tests for reading parens/cells
-
-
-```
-main:
-    1. Decide if its launching a repl or running a program file, handle accordingly
-    2. Create the allocator to be used throughout the programs runtime
-    3. Allocate a bunch of cells in the free list
-    4. Run based on 1
-```
-
