@@ -9,6 +9,8 @@ A lisp written in zig
  - [x] Implement scan for strings
  - [x] Implement scan for numbers
  - [x] Implement scan for identifiers
+ - [ ] Flesh out a stack implementation (push, pop, etc.)
+ - [ ] Flesh out a sexp implementation (cons, car, cdr)
  - [ ] Implement read for identifiers
  - [ ] Implement print for identifiers
  - [ ] Implement read for parens/cells
@@ -36,7 +38,14 @@ Implement fn
 ## Rough pseudocode
 
 ```
+scanner.zig
 scanner (implemented basically identically to Crafting Interpreters)
+
+stack.zig
+implements a little stack with a few helper methods
+
+sexp.zig
+implements sexp (basically just a linked list wiht a little interface to interact)
 
 read(scanner) -> sexp:
     list = new list
